@@ -1,7 +1,10 @@
 package com;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.Persistence;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,6 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class repStuff implements Repository<Stuff>{
+    @PersistenceContext
     private EntityManager emngr = Persistence.createEntityManagerFactory("DBC").createEntityManager();
     private Statement stmt;
     private  DB_connection dbconn;
@@ -25,29 +29,33 @@ public class repStuff implements Repository<Stuff>{
         stmt=dbconn.getStatement();
     }
     @Override
+    @Transactional
     public void rAdd(Stuff stuff) {
-        sql_request="insert into stuff values("+stuff.getId()+", "+stuff.getFullname()+", "+stuff.getProfession()+");";
-        try {stmt.executeUpdate(sql_request);stmt.close();} catch (SQLException e) {throw new RuntimeException(e);}
+        EntityTransaction et= emngr.getTransaction();
+        et.begin();
+        emngr.persist(stuff);
+        et.commit();
         sql_request="";
     }
 
     @Override
+    @Transactional
     public void rRemove(Stuff stuff) {
-        sql_request="delete from stuff where id="+stuff.getId()+";";
-        try {stmt.executeUpdate(sql_request);stmt.close();} catch (SQLException e) {throw new RuntimeException(e);}
+        Stuff rmvstuff=emngr.find(Stuff.class,stuff.getId());
+        if(rmvstuff!=null) {
+            sql_request = "delete from stuff where id=" + stuff.getId() + ";";
+            try {
+                stmt.executeUpdate(sql_request);
+                stmt.close();
+            } catch (SQLException e) {throw new RuntimeException(e);}
+        }
         sql_request="";
     }
 
     @Override
     public void rUpdate(Stuff stuff,int id,String column) {
-        String change_column="";
-        switch(column){
-            case "id":{change_column+=stuff.getId();break;}
-            case "fullname":{change_column+=stuff.getFullname();break;}
-            case "profession":{change_column+=stuff.getProfession();break;}
-        }
-        sql_request="update stuff set "+column+"="+change_column+" where id="+id+";";
-        try {stmt.executeUpdate(sql_request);stmt.close();} catch (SQLException e) {throw new RuntimeException(e);}
+       EntityTransaction et=emngr.getTransaction();
+       Stuff updtstuff=emngr.merge(stuff);
         sql_request="";
     }
 
