@@ -1,7 +1,10 @@
 package com;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.Persistence;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,6 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class repTovar implements Repository<Tovar>{
+    @PersistenceContext
     private EntityManager emngr = Persistence.createEntityManagerFactory("DBC").createEntityManager();
     private Statement stmt;
     private  DB_connection dbconn;
@@ -26,32 +30,32 @@ public class repTovar implements Repository<Tovar>{
     }
     @Override
     public void rAdd(Tovar tovar) {
-        sql_request="insert into tovar values("+tovar.getId()+", "+tovar.getName()+", "+tovar.getFirm_name()+", "+tovar.getModel()+", "+tovar.getProperties()+", "+tovar.getGarant()+", "+tovar.isImage()+");";
-        try {stmt.executeUpdate(sql_request);stmt.close();} catch (SQLException e) {throw new RuntimeException(e);}
+       EntityTransaction et=emngr.getTransaction();
+       et.begin();
+       emngr.persist(tovar);
+       et.commit();
         sql_request="";
     }
 
     @Override
+    @Transactional
     public void rRemove(Tovar tovar) {
-        sql_request="delete from tovar where id="+tovar.getId()+";";
-        try {stmt.executeUpdate(sql_request);stmt.close();} catch (SQLException e) {throw new RuntimeException(e);}
-        sql_request="";
+        Tovar rmvtovar=emngr.find(Tovar.class,tovar.getId());
+        if(rmvtovar!=null) {
+            sql_request = "delete from tovar where id=" + tovar.getId() + ";";
+            try {
+                stmt.executeUpdate(sql_request);
+                stmt.close();
+            } catch (SQLException e) {throw new RuntimeException(e);}
+            sql_request = "";
+        }
     }
 
     @Override
+    @Transactional
     public void rUpdate(Tovar tovar,int id,String column) {
-        String change_column="";
-        switch(column){
-            case "id":{change_column+=tovar.getId();break;}
-            case "name":{change_column+=tovar.getName();break;}
-            case "firm_name":{change_column+=tovar.getFirm_name();break;}
-            case "model":{change_column+=tovar.getModel();break;}
-            case "properties":{change_column+=tovar.getProperties();break;}
-            case "garant":{change_column+=tovar.getGarant();break;}
-            case "image":{change_column+=tovar.isImage();break;}
-        }
-        sql_request="update tovar set "+column+"="+change_column+" where id="+id+";";
-        try {stmt.executeUpdate(sql_request);stmt.close();} catch (SQLException e) {throw new RuntimeException(e);}
+        EntityTransaction et= emngr.getTransaction();
+        Tovar updttovar= emngr.merge(tovar);
         sql_request="";
     }
 
